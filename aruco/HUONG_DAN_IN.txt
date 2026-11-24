@@ -1,0 +1,16 @@
+IN MA ARUCO CHO XE AGV  (4 ma / to A4, 2 mat)
+=============================================
+In tung to:  to1_2mat.pdf ... to7_2mat.pdf  (moi file = 1 to: trang 1 mat truoc, trang 2 mat sau)
+In tat ca:   aruco_4ma_2mat.pdf             (7 to = 14 trang)
+File PDF da ghi san: in 2 mat lat canh dai + ti le 100%.
+Dan tiem in: "In 2 mat, lat canh dai, ti le 100%, A4 giay mo, trang den."
+In xong: do phan den = 5 cm, soi den xem chu mat sau dung sau ma, cat theo net dut.
+
+To 1: tram 0 HOME, 1 PICKUP, 5 ZONE_A, 6 ZONE_B
+To 2: tram 7 ZONE_C, 8 ZONE_D | bao truoc 10, 11
+To 3: bao truoc 15, 16, 17, 18
+To 4: toc do 20, 21, 22 | re trai 30
+To 5: re phai 31, quay dau 32 | nga re 35 J1, 36 J2
+To 6: luat 40, 41, 42, 43
+To 7: 49 ma test camera (khong can in)
+Chi thu lay/tra hang: in to 1 + to 2.

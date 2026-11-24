@@ -1,0 +1,27 @@
+# ROS 2
+ros2_ws/build/
+ros2_ws/install/
+ros2_ws/log/
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+# Node / frontend
+node_modules/
+dist/
+# Firmware build outputs
+firmware/**/Debug/
+firmware/**/Release/
+firmware/host_tests/build/
+*.o
+*.elf
+*.bin
+*.hex
+*.map
+# Secrets
+.env
+*.env.local
+# Large test data (keep README)
+tests/data/*
+!tests/data/README.md

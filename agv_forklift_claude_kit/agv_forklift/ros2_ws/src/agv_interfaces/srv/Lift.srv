@@ -1,0 +1,11 @@
+# Server: stm32_bridge (/lift). Client: mission_controller ONLY.
+# Returns immediately (accepted / rejected). Completion is tracked on /lift_state via request_id.
+uint8 ACTION_STOP=0
+uint8 ACTION_HOME=1
+uint8 ACTION_UP=2
+uint8 ACTION_DOWN=3
+uint8 action
+---
+bool accepted
+uint16 request_id
+string message

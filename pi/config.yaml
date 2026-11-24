@@ -1,0 +1,281 @@
+# Cau hinh AGV (Pi). Sua o day, khong sua trong code.
+
+serial_port: /dev/serial/by-id/usb-1a86_USB_Serial-if00-port0   # STM32 qua CH340 (ten co dinh, khong doi khi cam lai)
+
+geometry:                          # do 2026-11-20
+  car_length_mm: 450               # theo huong tien (nguoi dung: dai 45, rong 34)
+  car_rear_mm: 210                 # than xe KHONG doi xung: tu tam banh ra duoi xe ~21 cm (than 45 cm, mui ~24 cm + LiDAR nho 4 cm)
+  car_width_mm: 430                # TINH CA BANH mecanum (LiDAR thay mep banh o y = +-212 mm); khung khong banh ~340
+  wheel_diam_mm: 81.7              # HIEU CHINH 2026-11-24: lenh 30 cm, encoder 31.15, thuoc 31.8 -> 80 x 31.8/31.15 (ban dau 80)
+  enc_cpr: 3960                    # xung / vong banh (11 xung x4 x hop so 90)
+  lxly_mm: 274                     # Lx+Ly hieu dung (268 do voi D=80, x1.021 theo D da hieu chinh)
+  # 1 do/s xoay xe = lxly * pi/180 / (pi*80/3960) ~ 74 xung/s moi banh
+
+lidar:
+  port: /dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0   # LiDAR qua CP2102
+  baud: 115200
+
+obstacle:                          # LiDAR vat can (kit Module 5). Do 2026-11-23: vat truoc mui xe -> 76/84 do, xe xoay trai 30 -> goc vat +31
+  enabled: true
+  yaw_offset_deg: 161.5            # DO LAI 2026-11-24: chai dat thang truoc giua LiDAR 40 cm -> goc LiDAR 161.5 (lan do cu 80 bi bat nham vat khac)
+  angle_sign: -1                   # -1: goc LiDAR TANG ve ben PHAI xe (do bang xoay xe)
+  mount_x_mm: 280                  # DO TAY 2026-11-24: tam xe -> tam dau quay LiDAR 27-29 cm
+  mount_y_mm: 0
+  blocked_arcs_deg: []             # cung bi khung che (de trong: diem tren than xe da tu loai)
+  front_extent_mm: 320             # mui xe = vo LiDAR (tam LiDAR 28 cm + 4 cm); bo phan sat LiDAR da loc bang mat na (lidar_selfmask.json)
+  self_mask_range_mm: 300          # hoc mat na than xe trong vong 30 cm quanh LiDAR (lidar_selfmask.py)
+  self_mask_tol_mm: 40
+  stop_mm: 300                     # tinh tu MEP TRUOC xe (kit 9.2)
+  slow_mm: 800
+  corridor_margin_mm: 20           # vung DUNG phia truoc = than xe + 2 cm moi ben (kho hep; 5 cm lam dung vi mep thung sat hong)
+  front_half_angle_deg: 15         # (truoc 30: tuong sat line lot vao -> bao CHAM gia)
+  persist_scans: 2                 # vat phai thay 2 vong lien tiep moi STOP
+  clear_scans: 3
+  clear_frames: 15                 # BLOCKED: vat di 15 khung (0.5 s) moi chay tiep
+  rotation_margin_mm: 60           # xoay tai cho: goc xe quet ban kinh ~28 cm + 6 cm; LiDAR thay vat trong do -> khong xoay
+  rotation_wait_s: 15
+  scan_timeout_s: 0.5              # LiDAR mat du lieu qua lau -> coi nhu co vat, dung
+  wait_s: 3.0                      # vat van con sau 3 s -> xet ne (kit 10.4)
+  block_timeout_s: 60
+  detour_enabled: true             # kit: KHONG ne khi dang cho hang (tu dong), ma 40 cam ne
+  prefer_side: left
+  curve_enabled: false             # (cu) ne cong sin; nay dung ne CHEO (diag_*)
+  diag_enabled: true               # ne CHEO: tien + sang ben (10 gio 30 / 1 gio 30) thay vi truot ngang 9/3 gio
+  diag_min_deg: 45                 # cheo nhat = 45 do (10 gio 30); it cho phia truoc -> goc lon hon, toi 90 (9 gio)
+  diag_front_margin_mm: 80         # chua 8 cm truoc vat khi tinh goc
+  return_deg: 45                   # ve tuyen cheo 45 do (1 gio 30 neu da ne trai)
+  _curve_old: true              # vat o XA (LiDAR thay >= curve_trigger_mm) va du cho -> ne theo DUONG CONG, khong dung
+  curve_trigger_mm: 300            # vat cach mui xe >= 35 cm moi ne cong; gan hon -> dung + truot ngang
+  curve_out_min_mm: 250            # quang chay toi de lech het (sin) toi thieu / toi da
+  curve_out_max_mm: 600
+  curve_out_margin_mm: 100         # lech xong truoc khi toi vat 10 cm
+  curve_speed: 1000                # toc do toi khi ne cong
+  curve_k: 3.0                     # he so sua sai lech ngang (vy xung/s moi mm)
+  free_scans: 8                   # ben ne phai TRONG lien tuc 12 vong quet (~2 s) moi chon (tuong trang bong luc thay luc khong)
+  block_scans: 3                   # dang ne: ben do bi chan ~3 vong quet lien tiep moi dung
+  detour_mm: 350                   # truot ngang TOI THIEU 35 cm (kit 10.5); vat rong hon -> tu tang
+  detour_margin_mm: 80             # khoang ho giua mep xe va mep vat khi ne
+  detour_max_mm: 700               # vat can truot hon 70 cm moi qua -> khong ne, cho
+  object_depth_mm: 700             # xet diem vat trong 70 cm truoc mui xe
+  side_clearance_mm: 500           # (chi de bao TRONG/CHAN tren log)
+  mount_blind_deg: [115, 245]      # goc XE sau lung LiDAR (mui xe) bi than xe che CO DINH -> khong tinh la 'khong biet' khi ne
+  blind_scans: 6                   # huong ma 6 vong lien tiep khong thay gi ngoai than xe -> MU (khong biet)
+  blind_max_frac: 0.25             # >25% huong nhin sang 1 ben bi mu -> ben do KHONG duoc coi la trong
+  side_margin_mm: 100              # ne: ben do can trong = quang CON PHAI truot + 10 cm khoang ho
+  side_check_ahead_mm: 50          # vung kiem tra 2 ben chi NGANG THAN XE (+5 cm): truot ngang khong di toi truoc; vat dai nam ngang truoc xe khong duoc tinh la chan 2 ben
+  strafe_speed: 1200
+  pass_speed: 1000
+  pass_min_mm: 450                 # chay song song it nhat 45 cm (LiDAR thay vat da o sau xe)
+  pass_min_cam_mm: 850             # vat CHI camera thay (LiDAR khong): chay du than xe + 30 cm vat + 10 cm le
+  pass_max_mm: 1500
+  pass_margin_mm: 100
+  beside_band_mm: 500
+  beside_extra_mm: 150             # dang vuot: xet tu hong xe toi (vi tri tuyen cu + 15 cm) - khong xet tuong o xa
+  return_tol_mm: 20
+  reacquire_speed: 400
+  reacquire_s: 5.0                 # kit 10.8
+  slow_speed: 800                  # vung SLOW (30-80 cm)
+
+cam_obstacle:                      # camera phat hien vat can (bu cho LiDAR: vat den/bong/thap). Can ground_calib.json
+  enabled: true
+  roi_top: 0.40
+  learn_frames: 20                 # hoc mau san 20 khung dau (xe dung yen o dau duong)
+  dist_thresh: 6.0                 # (chi dung de hien thi)
+  dark_delta: 45                   # toi hon mau san > 45 (Lab L) -> vat toi (hop den: LiDAR hay sot)
+  chroma_thresh: 7.0               # mau khac san > 7 do lech chuan -> vat co mau
+  bright_ignore: 40                # vung sang hon san > 40 -> bo (giay, ma ArUco, phan chieu)
+  marker_pad: 2.0                  # khoet vung ma ArUco (x2 kich thuoc ma: gom vien trang)
+  lab_weights: [0.5, 1.0, 1.0]     # do sang it tin (san bong co phan chieu)
+  min_std: [8, 4, 4]
+  corridor_margin_mm: 50
+  row_fill: 0.35                   # hang co > 35% hanh lang la "la" -> hang vat can
+  min_rows: 6
+  first_min_mm: 100                # camera THAY LAN DAU ma da sat mui < 10 cm -> vet san (vat that phai thay tu xa) -> bo
+  min_depth_mm: 30                 # vung la chieu xuong san mong hon 3 cm = vet PHANG tren san (vet go) -> bo; vat dung luon > 4.5 cm
+  stop_mm: 300                     # tu mui xe (giong LiDAR)
+  covered_frac: 0.85               # > 85% vung xet toi den -> camera bi che -> DUNG
+  persist_frames: 4
+
+camera:
+  index: /dev/v4l/by-id/usb-Rapoo_Camera_Rapoo_Camera_SN0001-video-index0   # cam USB bam line - TEN CO DINH (cam v3 CSI chiem video0)
+  width: 320
+  height: 240
+  fps: 30
+
+line:
+  color: blue                      # black | blue  (2026-11-20: dung bang keo xanh duong dam)
+  roi_top: 0.40                    # chi xet tu 40% chieu cao anh (bo do dac phia tren, vd ro xanh)
+  roi_bottom: 1.0                  # toi day anh (khuc cua hien o phan duoi anh, 2026-11-20)
+  black_thresh: 0                  # 0 = tu dong (Otsu); >0 = nguong co dinh (0..255), pixel toi hon la line
+  min_contrast: 40                 # line phai toi hon nen it nhat chung nay (tranh nham nhieu san)
+  black_max_sat: 90                # line den phai "khong mau": do bao hoa <= gia tri nay
+  blue_hsv_lo: [98, 120, 15]       # HSV OpenCV: H 0..179. Do thuc te bang keo: H 104-112, S 190-250, V 27-43 (rat toi)
+  blue_hsv_hi: [125, 255, 200]     # san gach: H 87 S 54 V 140; than xe: H 76 S 76 V 60
+  morph_kernel: 7                  # loc hinh thai (pixel): lon hon = vien muot hon, mat chi tiet nho
+  draw_eps: 3.0                    # lam tron vien khi ve (chi de xem)
+  center_offset: 0.0               # hieu chinh camera lech tam: do lech do duoc khi xe dat DUNG GIUA line (chay --calib)
+  min_area: 300                    # pixel: vung nho hon coi nhu nhieu
+  cross_width_ratio: 0.6           # line rong hon 60% khung -> dau "+" (tram dung)
+  corner_row_ratio: 0.30           # 1 hang anh co line rong > 30% khung -> la nhanh ngang (nga cua)
+  bar_min_width: 0.40             # sat nga re chi con thanh ngang: rong > 40% anh ...
+  bar_max_height: 0.45             # ... va thap hon 45% vung xet
+  bar_memory_frames: 20            # trong 20 khung sau khi thay nga re, thanh ngang rong van tinh la nga re do
+  corner_vs_stem: 2.2              # hang nhanh ngang phai rong > 2.2 lan than line (bo phinh do phoi canh / vet choi)
+  arm_min_ratio: 0.20              # nhanh phai vuon ra mot phia >= 20% be ngang anh moi tinh la nga cua
+  corner_min_rows: 4               # can it nhat chung nay hang nhu vay moi tinh la nga cua
+
+follow:
+  # ----- DIEU TOC THICH NGHI: thang -> nhanh, cong/lech -> cham dan, sap toi diem (re/cuoi line/nhan hang) -> ham dan -----
+  speed: 4000                      # toc do toi da tren doan thang (~25 cm/s)
+  slow_speed: 1500                 # toc do khi line lech/nghieng nhieu (noi suy muot giua speed va slow_speed)
+  err_full: 0.5                    # lech >= 0.5 -> dung slow_speed
+  angle_full: 30                   # line nghieng >= 30 do -> dung slow_speed
+  point_speed: 1200                # toc do luc vao diem (nga cua / cuoi line); sau do ham theo quang con lai toi 0
+  accel_up: 2500                   # tang toc toi da (xung/s^2) - xe tang toc em sau khi qua cua
+  accel_down: 2500                 # giam toc toi da (= WHEEL_ACCEL_CPS2 firmware)
+  creep_decel: 2000                # ham theo quang con lai: v = sqrt(2*a*con_lai), nho hon accel_down de bam kip
+  creep_min_speed: 300             # toc do nho nhat khi sap dung (khong ket lai)
+  err_lpf: 0.5                     # loc thong thap do lech line (0..1, nho = muot hon nhung tre hon)
+  kp: 2000.0                       # wz (xung/s) cho moi don vi lech (-1..1)
+  kd: 400.0
+  ki: 300.0                        # tich phan nho: xoa sai so du (lech deu 1 phia do banh yeu / camera lech)
+  i_max: 0.3                       # gioi han tich luy (don vi do lech x giay)
+  max_wz: 2600
+  lost_stop_s: 0.6                 # (giu lai cho tuong thich, thay bang search_*)
+  d_lpf: 0.3                       # loc thong thap dao ham sai so (0..1, nho = muot hon) chong giat
+  search_wz: 1600                   # mat line: xoay tai cho ve phia line bien mat (xung/s)
+  search_s: 8.0                    # xoay tim toi da chung nay giay (~ > 90 do) roi moi dung + ghi su co
+  search_accept: 0.3               # dang xoay tim: chi nhan line nam ve phia dang xoay (hoac lech < 0.3 phia kia)
+  search_confirm: 3                # can thay line lien tiep chung nay khung moi thoat che do tim
+  corner_angle: 25                 # goc line (do) lon hon -> sap toi khuc cua: chay cham
+  # --- nga cua: thay -> chay cham toi gan -> DUNG -> xoay tai cho ve phia nhanh line -> bam tiep ---
+  start_confirm: 8                 # xuat phat: phai thay line 8 khung lien tiep moi chay
+  search_min_travel_m: 0.15        # chua di duoc 15 cm ma mat line -> dung cho, KHONG xoay tim
+  start_wait_s: 3.0                # xuat phat: cho thay line toi da 2 s (khong xoay tim)
+  approach_speed: 1600              # chay cham khi da thay nga cua phia truoc
+  corner_stop_y: 0.85              # (khong con dung: nay cho nga cua troi ra khoi day anh roi chay them corner_extra_mm)
+  wheel_accel: 2500                # = WHEEL_ACCEL_CPS2 firmware: de tinh quang phanh v^2/(2a), dung som cho dung cho
+  corner_vote_max_y: 0.85          # nga re xuong qua 85% anh: huong do duoc khong tin -> khong bau phieu
+  corner_gate_mm: 120             # cap nhat diem dung o nga re chi khi lech < 12 cm so voi uoc luong truoc (bo line ngang o xa)
+  corner_memory_s: 1.5             # mat line trong 1.5 s sau khi thay nga re -> la goc cua (khong phai cuoi duong)
+  corner_extra_mm: 200             # nga cua ra khoi day anh -> chay THANG them chung nay (mm) de TAM XE nam tren nga cua
+                                   # = tu mep duoi anh tren san toi tam xe. Nguoi dung do tam xe->camera ~23.5-24.5 cm
+                                   # (mep anh tren san con xa hon chut). Re som -> tang; chay lo -> giam
+  corner_pause_s: 0.4              # dung yen chung nay truoc khi xoay
+  turn_wz: 2400                    # toc do xoay toi da o nga cua (~32 do/s)
+  turn_wz_min: 900                 # sau turn_slow_deg: xoay cham lai (~12 do/s) de bat line moi chinh xac, khong lo
+  turn_slow_deg: 60                # xoay nhanh toi goc nay roi cham dan
+  turn_accel: 4000                 # tang/giam toc do xoay (xung/s^2) -> bat dau/ket thuc xoay em
+  turn_min_s: 0.8                  # (khi khong co gyro) xoay it nhat chung nay roi moi tim line moi
+  turn_min_deg: 60                 # xoay it nhat 60 do moi nhan line moi (nga re vuong ~90 do)
+  turn_max_deg: 170                # nga re gat (> 90 do, vd chuyen 29 can ~160 do). < 180 de khong quay nguoc lai doan vua di
+  corner_lost_frames: 6            # nga cua bien mat lien tiep chung nay khung moi tinh la "da toi" (loc chop)
+  corner_near_y: 0.60              # ... va truoc do nga cua phai xuong toi it nhat 60% anh (khong thi la bao nham)
+  # --- khi DA hieu chinh mat san (ground_calib.json): dung goc/lech THAT ---
+  turn_accept_deg: 10              # co hieu chinh: xoay toi khi line moi song song (goc that < 10 do)
+  align_max_mm: 450                # line moi lech ngang toi 45 cm van nhan (doan ngan / goc phuc tap), roi truot ngang ve
+  align_timeout_s: 8               # truot ngang toi da 8 s (45 cm o ~6-9 cm/s)
+  align_ok_mm: 15                  # lech < 1.5 cm -> can xong
+  align_k: 8.0                     # vy (xung/s) moi mm lech
+  align_vy_max: 1500
+  align_kw: 30.0                   # wz moi do lech goc khi can ngang
+  align_vx: 300                    # vua truot vua nhich toi cham
+  turn_accept_angle: 20            # ... va line moi gan thang hang voi xe (|goc| < 20 do; bo qua khi thay nga cua tiep o xa)
+  turn_accept: 0.25                # CHUA hieu chinh camera: than line gan xe phai lech < 0.25 moi thoi xoay (0.6 lam dung xoay som, chuyen 27)
+  turn_max_s: 25.0                 # an toan: xoay qua lau khong thay -> dung (gioi han chinh la turn_max_deg)
+  end_top_margin: 0.12             # dau mut line nam duoi mep tren vung xet > 12% anh -> dang thay CUOI LINE (0.06 de nham nga cua o xa)
+  end_on_lost: true                # mat line ngay sau khi thay cuoi line -> chay them corner_extra_mm roi DUNG (toi noi)
+  stop_at_cross: false             # duong thu chua co tram "+" (goc vuong cuoi line de bi nham la dau +)
+
+aruco:
+  dictionary: DICT_4X4_50
+  process_every_n_frames: 2        # xu ly 1/2 khung (giam tai CPU)
+  confirm_frames: 3                # thay cung ID 3 lan xu ly lien tiep moi xac nhan (kit §8.2)
+  unlock_frames: 15                # da xu ly xong -> khoa ID, chi mo lai khi marker roi khoi anh 15 lan xu ly
+  min_side_px: 12                  # canh marker nho hon -> bo (qua xa / nhieu)
+  marker_size_mm: 60               # canh marker khi in (do lai sau khi in)
+
+station:
+  uturn_min_deg: 150               # quay dau: xoay it nhat 150 do moi nhan line
+  uturn_max_deg: 230
+  uturn_extra_m: 1.0               # ma quay dau co hieu luc toi khi het line trong 1 m sau ma
+  hint_valid_m: 1.0                # ma re/nga re co hieu luc trong 1 m tiep theo (dat ma truoc nga re 30-40 cm)
+  straight_through_m: 0.8          # nga re "di thang": bo qua nga cua trong 0.8 m tiep theo
+  marker_gone_frames: 6            # marker bien khoi anh 6 lan xu ly (sau khi da xuong >= marker_near_y) -> coi nhu toi
+  marker_near_y: 0.60
+  marker_lost_frames: 30           # mat marker lau ma chua toi gan -> bo qua tram, ghi su co
+  approach_timeout_s: 20
+  creep_timeout_s: 15
+  marker_trigger_y: 0.80           # tam marker xuong toi 80% chieu cao anh -> bat dau dem quang "chay them"
+  approach_speed: 1000             # da xac nhan tram can toi -> cham lai
+  stop_offset_mm: 250              # mac dinh chay them sau trigger (moi tram co the dat rieng trong station_map.yaml)
+  pause_s: 0.5                     # dung yen truoc khi nang/ha
+  sim_lift_s: 2                    # che do --no-lift: dung tai tram chung nay giay thay cho nang/ha
+  action_timeout_s: 30             # nang/ha qua lau -> loi
+  loaded_speed_scale: 0.6          # dang mang hang: moi toc do x0.6 (giam nguy co lat/roi hang, kit H10)
+
+lift:
+  dir_sign: -1                     # do 2026-11-24: lenh + lam cang DI XUONG -> dao chieu o Pi (firmware LIFT_DIR_UP giu nguyen)
+  steps_per_mm: 800                # TMC2209 1/8 buoc (1600 buoc/vong) / vit me T8 buoc 2 mm = 800 buoc/mm
+  up_mm: null                      # (de trong) - dang dung up_s vi chua chot buoc vit me
+  up_s: 5                          # NANG trong 5 s o toc do speed_sps (nguoi dung chot 2026-11-24: 4-6 s), HA = nguoc lai dung so buoc
+  speed_sps: 800                   # toc do buoc khi nang/ha (0.5 vong/s, giong luc thu 2026-11-24)
+  test_sps: 1600                   # lift_test.py: 2 mm/s
+  test_max_mm: 40                  # lift_test.py: toi da 4 cm / lan (chua co cong tac hanh trinh)
+  # Ha hang = chay nguoc dung so buoc da nang (khong can cong tac duoi). Ve goc bang cong tac: lam sau khi lap cong tac.
+
+battery:
+  low_v: 11.5                      # acquy chi 12V: duoi muc nay khi dung yen -> canh bao
+  sensor_min_v: 6.0                # doc < 6 V = mach phan ap ho (A6 chua han lai) -> bo qua, khong bao pin yeu
+  log_every_s: 30
+
+video:
+  record: true                     # moi chuyen tu ghi video camera (co ve line/nga cua/trang thai)
+  dir: videos                      # luu o ~/agv/videos/trip_<so chuyen>.avi
+  record_raw: true                 # ghi them trip_NNNN_raw.avi (anh goc chua ve) de thu lai thuat toan
+  keep: 20                         # chi giu 20 video moi nhat (the nho khong day)
+
+database: agv.db
+
+web:
+  host: 0.0.0.0
+  port: 8080
+  control_pin: null                # dat ma PIN (vd "2468") de chi nguoi biet PIN moi giao duoc nhiem vu tu dashboard
+
+memory:                            # BO NHO DUONG DI + ne theo quy dao (docs/feature_line_memory.md). Don vi mm, mm/s
+  enabled: true
+  cam_latency_s: 0.08              # anh chup truoc luc doc ~80 ms -> lay pose odometry tai thoi diem do
+  memory_resolution_m: 0.02        # nut bo nho cach nhau 2 cm
+  memory_max_length_m: 5.0         # giu 5 m phia sau xe
+  memory_gap_max_mm: 250           # diem moi cach cuoi bo nho > 25 cm -> bo (nhieu / line khac)
+  memory_min_ahead_mm: 350         # mat line ma bo nho con >= 35 cm phia truoc -> bam bo nho (line gay/che)
+  memory_follow_max_mm: 600        # bam bo nho toi da 60 cm, khong thay line -> xoay tim (cu)
+  memory_follow_speed: 60
+  memory_timeout_s: 15
+  pursuit_lookahead_mm: 150
+  heading_k: 1.5                   # giu huong than theo tiep tuyen duong (rad/s moi rad lech)
+  drift_correction: true           # P4: thay line ro -> sua troi ngang odometry
+  drift_correction_gain: 0.3
+  drift_correction_max_mm: 25      # moi khung sua toi da 2.5 cm
+  detour_trigger_mm: 700           # vat NAM TREN DUONG (theo bo nho) cach mui <= 70 cm -> dung, cho, lap quy dao
+  path_band_mm: 20                 # "tren duong" = trong be ngang than xe + 2 cm (tuong cach line 30 cm KHONG tinh)
+  object_depth_max_mm: 350         # cum vat sau toi da 35 cm
+  object_width_max_mm: 350         # cum vat rong toi da 35 cm (khong noi sang thung / ke ben canh)
+  object_depth_min_mm: 100         # LiDAR chi thay mat truoc vat -> gia su vat sau >= 10 cm
+  detour_margin_mm: 50             # khe ho hong xe - vat (kho hep: 5 cm)
+  detour_long_margin_mm: 50        # khe ho theo doc tuyen (mui xe - mat truoc vat, duoi xe - mat sau vat)
+  detour_curve_length_mm: 500      # doan ra / ve (smoothstep bac 5)
+  detour_curve_fracs: [1.0, 0.75, 0.5, 0.3]   # loi hep (ke 2 ben): thu doan ra/ve 50 -> 37 -> 25 -> 15 cm (doc dan)
+  detour_max_mm: 700               # lech toi da
+  detour_speed: 80
+  detour_timeout_s: 60
+  detour_when_loaded: false        # dang mang hang -> khong ne (cho)
+  extrapolate_min_straight_mm: 150 # bo nho chua thay duong sau vat: chi ngoai suy neu 15 cm cuoi THANG (camera that chi thay ~22 cm line luc dung yen)
+  straight_tol_mm: 25
+  sweep_margin_mm: 20              # doan ngang vat: than xe + 2 cm phai trong
+  exec_margin_mm: 20               # dang ne: du doan 1 s, diem trong than xe +2 cm -> dung
+  exec_predict_s: 1.0              # du doan 1 s (LiDAR 6 vong/s + phanh)
+  rejoin_confirm_frames: 5         # nhap lai: camera thay line that 5 khung lien tiep
+  rejoin_max_offset_mm: 120
+  rejoin_search_distance_mm: 400   # het quy dao di them 40 cm khong thay line -> dung bao loi
+  rejoin_speed: 50

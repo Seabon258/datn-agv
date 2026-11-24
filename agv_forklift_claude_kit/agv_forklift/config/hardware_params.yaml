@@ -1,0 +1,120 @@
+# =============================================================================
+# THÔNG SỐ PHẦN CỨNG — NGUỒN SỰ THẬT DUY NHẤT (single source of truth)
+# =============================================================================
+# - null = CHƯA BIẾT. Claude/agent KHÔNG được tự điền giá trị. Chỉ chủ dự án điền
+#   sau khi đo/kiểm tra (cách đo: docs/06_hardware_params.md).
+# - Đây KHÔNG phải file ros__parameters (ROS 2 không cho phép null). Node đọc file này
+#   bằng loader dùng chung (agv_common.hw_params), firmware dùng header sinh tự động
+#   từ file này + firmware_params.yaml (tools/gen_firmware_config.py — viết ở Module 1).
+# - Loader phải FAIL-FAST: nếu thiếu tham số bắt buộc cho chế độ phần cứng thật thì
+#   báo lỗi liệt kê đầy đủ tên tham số còn null. sim_mode được phép chạy với giá trị mô phỏng.
+# - Đơn vị SI (m, s, rad) trừ khi tên có hậu tố khác (_mm, _deg, _mv).
+# =============================================================================
+schema_version: 1
+
+known_facts:                     # do chủ dự án cung cấp — chỉ đổi khi phần cứng đổi
+  high_level_computer: "Raspberry Pi 4 Model B 4GB, Ubuntu 22.04, ROS 2 Humble"
+  low_level_mcu: "STM32F411CEU6 Black Pill (PCB 2 lớp tự thiết kế)"
+  drive_motors: "4x JGB37-520 12V có encoder"
+  motor_drivers: "4x DRV8871"
+  wheels: "4x mecanum, đường kính danh nghĩa 80 mm"
+  imu: "MPU6050"
+  lidar: "Camsense 2D, driver hclidar_driver_ros2"
+  camera: "USB camera"
+  line: "băng keo xanh dương trên nền gạch trắng, có góc vuông 90 độ"
+  lift: "stepper + vít me, công tắc hành trình dưới để homing"
+  known_issue: "nhiễu động cơ từng làm lỗi STM32/USB trên PCB hiện tại"
+
+chassis:
+  footprint_dims_from_drawing_mm: [340, 450]   # từ hình render — CHƯA rõ cạnh nào là dài (x) / rộng (y)
+  footprint_length_m: null       # theo hướng tiến (trục x)
+  footprint_width_m: null        # theo trục y
+  wheelbase_m: null              # tâm trục trước ↔ tâm trục sau
+  track_width_m: null            # tâm bánh trái ↔ tâm bánh phải
+  base_link_to_front_edge_m: null   # base_link = tâm hình chữ nhật 4 điểm tiếp đất, z = mặt sàn
+  base_link_to_rear_edge_m: null
+  mass_kg: null
+  max_payload_kg: null
+  payload_cog_height_m: null     # chiều cao trọng tâm hàng khi đã nâng
+
+drive:
+  wheel_diameter_nominal_m: 0.080
+  wheel_diameter_calibrated_m: null    # hiệu chỉnh bằng chạy thẳng 2 m
+  rotation_scale_calibrated: null      # hệ số hiệu chỉnh (lx+ly) sau test quay 10 vòng
+  mecanum_roller_layout: null          # "X" | "O" — xác định bằng test strafe
+  encoder_counts_per_wheel_rev: null   # số đếm (chế độ x4) cho 1 vòng BÁNH
+  motor_max_rpm_measured: null         # tại bánh, 12 V, PWM 100%, có tải
+  motor_direction_sign: [null, null, null, null]     # [FL, FR, RL, RR] +1 | -1
+  encoder_direction_sign: [null, null, null, null]   # [FL, FR, RL, RR] +1 | -1
+  drv8871_control_scheme: null         # "PWM_PWM" (2 chân PWM/động cơ) | "PWM_GPIO" — theo PCB
+
+lift:
+  stepper_driver: null           # A4988 | DRV8825 | TMC2209 | ...
+  steps_per_rev: null            # thường 200 (1.8°)
+  microstepping: null
+  screw_lead_mm: null            # mm/vòng (T8x8 = 8, T8x2 = 2)
+  screw_self_locking_verified: null   # true/false — BẮT BUỘC kiểm tra (docs/05_safety.md H9)
+  travel_max_mm: null
+  up_position_mm: null
+  down_position_mm: null
+  max_speed_mm_s: null
+  homing_speed_mm_s: null
+  homing_backoff_mm: null
+  limit_switch_type: null        # "NO" | "NC" (khuyên dùng NC: đứt dây = báo kích hoạt = an toàn)
+  limit_switch_active_level: null   # 0 | 1 (mức logic khi công tắc kích hoạt)
+  has_top_limit_switch: null     # true | false
+
+stm32:
+  ioc_file: null                 # đường dẫn file .ioc của PCB (pin + timer mapping lấy từ đây)
+  uart_instance: null            # ví dụ "USART1"
+  timer_map_confirmed: null      # true sau khi đối chiếu .ioc (xem docs/06 §Timer budget)
+  estop_input_pin: null
+  battery_adc_pin: null          # null nếu không đo điện áp
+
+comm:
+  link_type: null                # "PI_GPIO_UART" (khuyến nghị) | "USB_TTL" | "USB_CDC"
+  pi_serial_device: null         # "/dev/ttyAMA0" | "/dev/serial0" | "/dev/ttyUSB0"
+  baudrate: 115200               # mặc định đã thống nhất trong docs/03; đổi phải đổi cả 2 phía
+
+imu:
+  connected_to: null             # "STM32_I2C" (mặc định đề xuất) | "PI_I2C"
+  i2c_address: null              # 0x68 | 0x69
+  mount_rpy_deg: [null, null, null]
+
+camera:
+  device: null                   # "/dev/video0" hoặc /dev/v4l/by-id/... (khuyên dùng by-id)
+  supported_mode_320x240_mjpg: null   # true/false — kiểm tra: v4l2-ctl --list-formats-ext
+  mount_x_m: null                # vị trí so với base_link
+  mount_y_m: null
+  mount_z_m: null
+  tilt_deg: null                 # góc chúc xuống so với phương ngang
+  view_near_m: null              # khoảng cách mép dưới ảnh trên sàn, tính từ MÉP TRƯỚC xe
+  view_far_m: null               # khoảng cách mép trên vùng ROI trên sàn, tính từ MÉP TRƯỚC xe
+  calibration_file: null         # tùy chọn (v1 không bắt buộc)
+
+lidar:
+  serial_device: null
+  scan_topic: null               # topic thật của hclidar_driver_ros2, ví dụ "/scan"
+  frame_id: null                 # frame_id trong LaserScan của driver
+  mount_x_m: null                # tâm lidar so với base_link
+  mount_y_m: null
+  mount_z_m: null                # = chiều cao mặt phẳng quét so với sàn
+  mount_yaw_deg: null
+  angle_convention_verified: null     # true sau khi xác nhận góc 0 = phía trước, tăng CCW
+  min_range_m: null
+  max_range_m: null
+  scan_rate_hz: null
+  blocked_angle_ranges_deg: null      # [[a1, a2], ...] các cung bị thân xe che (đo theo docs/06)
+
+aruco:
+  dictionary: "DICT_4X4_50"
+  marker_size_m: null            # cạnh marker sau khi in
+
+power:
+  battery_nominal: "12V 7Ah (theo hình render — cần xác nhận)"
+  battery_type: null             # SLA | Li-ion 3S | ...
+  voltage_sense_available: null
+  voltage_divider_ratio: null
+  estop_installed: null          # true/false
+  estop_cuts: null               # mong muốn: "DRIVE_AND_LIFT_POWER"
+  logic_power_separate: null     # Pi/STM32 có nguồn buck riêng, không bị E-stop cắt?

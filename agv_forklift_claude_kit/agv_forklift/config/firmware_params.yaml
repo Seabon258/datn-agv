@@ -1,0 +1,44 @@
+# =============================================================================
+# THAM SỐ CHÍNH SÁCH FIRMWARE (policy) — KHÔNG phải thông số đo phần cứng
+# =============================================================================
+# - tools/gen_firmware_config.py (Module 1) đọc file này + hardware_params.yaml
+#   để sinh firmware/core/inc/agv_config.h. Không viết số trực tiếp trong code C.
+# - Giá trị ban đầu bảo thủ; chỉnh sau khi test bench. Đổi watchdog_ms hoặc
+#   interbyte_timeout_ms phải cập nhật docs/03_uart_protocol.md.
+# =============================================================================
+schema_version: 1
+
+control:
+  control_loop_hz: 100            # vòng encoder → PID → PWM (10 ms)
+  pwm_frequency_hz: 20000         # trên ngưỡng nghe; kiểm tra khả năng timer theo .ioc
+  pwm_limit_permille: 1000
+  bench_pwm_limit_permille: 300   # dùng cho các chế độ test bench lần đầu
+  wheel_accel_limit_rpm_s: 120.0  # ramp khi TĂNG tốc; dừng vì lỗi thì tức thì
+  stop_brake_ms: 200              # DRV8871 brake (IN1=IN2=1) rồi coast
+  pid_default_kp: 0.0             # 0 = buộc chủ dự án tuning qua /stm32/set_pid trước khi chạy
+  pid_default_ki: 0.0
+  pid_default_kd: 0.0
+  pid_integral_limit: 300.0       # anti-windup, đơn vị ‰ PWM
+
+safety:
+  watchdog_ms: 300                # docs/03 §6 — HỢP ĐỒNG
+  wheel_fault_pwm_min: 300        # ‰
+  wheel_fault_rpm_max: 2.0        # rpm
+  wheel_fault_time_ms: 500
+  drive_moving_rpm_threshold: 3.0 # bánh "đang quay" ⇒ từ chối lệnh lift
+  undervoltage_mv: 10800          # chỉ dùng nếu power.voltage_sense_available = true
+
+lift:
+  timeout_factor: 1.5             # timeout = quãng đường / tốc độ × factor + margin
+  timeout_margin_s: 2.0
+  accel_mm_s2: 20.0               # profile hình thang
+
+comm:
+  interbyte_timeout_ms: 5         # docs/03 §3 — HỢP ĐỒNG
+  rx_ring_buffer_bytes: 256
+  telemetry_odom_hz: 50
+  telemetry_motor_hz: 20
+  telemetry_status_hz: 10
+  telemetry_lift_hz: 10
+  telemetry_imu_hz: 50
+  crc_error_rate_warn_permille: 10

@@ -1,0 +1,23 @@
+# Bang tram ArUco (DICT_4X4_50) - theo dinh dang kit agv_forklift (config/station_map.yaml).
+# Moi noi (line_follow, dashboard) doc tu file nay, KHONG hard-code ID o noi khac.
+# default_action: NONE | CHECKPOINT | HOME | LIFT_UP | LIFT_DOWN   (nhiem vu TRANSPORT tu chon hanh dong theo buoc)
+# stop_offset_mm: sau khi marker xuong toi marker_trigger_y, chay them chung nay (encoder) roi dung.
+#   null = dung follow.station_stop_offset_mm trong config.yaml. Chinh theo vi tri dan marker so voi cho lay hang.
+schema_version: 1
+stations:
+  - id: 0
+    name: "HOME"
+    default_action: "HOME"
+    stop_offset_mm: null
+  - id: 1
+    name: "PICKUP_A"
+    default_action: "LIFT_UP"
+    stop_offset_mm: null
+  - id: 2
+    name: "DROPOFF_B"
+    default_action: "LIFT_DOWN"
+    stop_offset_mm: null
+  - id: 3
+    name: "CHECKPOINT_C"
+    default_action: "CHECKPOINT"
+    stop_offset_mm: null

@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 tools/protocol_reference.py --check)",
+      "Bash(python3 tools/protocol_reference.py --print)",
+      "Bash(colcon build:*)",
+      "Bash(colcon test:*)",
+      "Bash(colcon test-result:*)",
+      "Bash(python3 -m pytest:*)",
+      "Bash(pytest:*)",
+      "Bash(make -C firmware/host_tests:*)",
+      "Bash(git status)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)"
+    ],
+    "deny": [
+      "Bash(st-flash:*)",
+      "Bash(STM32_Programmer_CLI:*)",
+      "Bash(openocd:*)",
+      "Bash(dfu-util:*)",
+      "Read(./.env)",
+      "Read(./dashboard/backend/.env)",
+      "Read(./dashboard/frontend/.env)"
+    ]
+  }
+}

@@ -1,0 +1,146 @@
+# =============================================================================
+# THAM SỐ ROS 2 (ros__parameters) — tên tham số là HỢP ĐỒNG (docs/02_interfaces.md §6)
+# =============================================================================
+# - Giá trị khởi tạo lấy từ prompt gốc; mọi giá trị phải hiệu chỉnh trên robot thật.
+# - Chỉ chứa tham số TINH CHỈNH/CHÍNH SÁCH. Thông số PHẦN CỨNG (đường dẫn thiết bị,
+#   kích thước, encoder, vị trí lắp...) nằm ở config/hardware_params.yaml.
+# - Float luôn viết có dấu chấm (0.0, 1.0) để ROS 2 không suy ra kiểu integer.
+# - Không dùng list rỗng [] (ROS 2 không suy ra được kiểu).
+# =============================================================================
+
+/**:
+  ros__parameters:
+    hardware_params_file: ""     # rỗng = launch điền <AGV_CONFIG_DIR>/hardware_params.yaml
+    station_map_file: ""         # rỗng = launch điền <AGV_CONFIG_DIR>/station_map.yaml
+    sim_mode: false
+
+camera_node:
+  ros__parameters:
+    width: 320
+    height: 240
+    fps: 30
+    fourcc: "MJPG"
+    frame_id: "camera_link"
+    v4l2_controls: ""            # "name=value,name=value" áp dụng bằng v4l2-ctl lúc khởi động (khóa exposure/WB)
+    reconnect_interval_s: 1.0
+
+line_follower:
+  ros__parameters:
+    hsv_lower: [100, 80, 50]
+    hsv_upper: [130, 255, 255]
+    morph_kernel_size: 5
+    roi_top_ratio: 0.5           # chỉ xử lý từ 50% chiều cao ảnh trở xuống
+    roi_band_count: 4
+    band_weights: [0.4, 0.3, 0.2, 0.1]   # gần → xa; độ dài phải = roi_band_count
+    min_band_pixels: 60
+    lost_timeout_s: 0.5
+    corner_width_ratio: 0.55     # blob trong một dải rộng hơn tỉ lệ này của ảnh = nghi góc vuông
+    corner_confirm_frames: 3
+    publish_debug_image: false
+    show_debug_window: false     # chỉ khi chạy có màn hình
+    video_file: ""               # khác rỗng = chạy offline từ video (không cần camera)
+
+aruco_detector:
+  ros__parameters:
+    process_every_n_frames: 2
+    confirm_frames: 3
+    lost_reset_frames: 3
+    video_file: ""
+
+obstacle_monitor:
+  ros__parameters:
+    scan_timeout_s: 0.3
+    front_half_angle_deg: 30.0
+    front_corridor_margin_m: 0.05
+    stop_distance_m: 0.30        # tính từ MÉP TRƯỚC xe
+    slow_distance_m: 0.80
+    min_obstacle_points: 3
+    zone_persistence_scans: 2
+    clear_hysteresis_scans: 3
+    side_clearance_required_m: 0.50
+    side_corridor_ahead_m: 0.30
+    beside_band_width_m: 0.40
+    rotation_margin_m: 0.05
+    self_filter_margin_m: 0.02
+
+safety_supervisor:
+  ros__parameters:
+    output_rate_hz: 20.0
+    cmd_timeout_s: 0.3
+    obstacle_timeout_s: 0.3
+    stm32_status_timeout_s: 0.5
+    mission_status_timeout_s: 1.0
+    max_vx: 0.25
+    max_vy: 0.20
+    max_wz: 1.0
+    slow_vx: 0.08
+    loaded_speed_scale: 0.6
+    accel_limit_x: 0.3
+    accel_limit_y: 0.3
+    accel_limit_wz: 1.5
+    allow_reverse: false
+    max_reverse_vx: 0.05
+
+mission_controller:
+  ros__parameters:
+    control_rate_hz: 20.0
+    status_rate_hz: 5.0
+    line_control_mode: "wz_only"   # "wz_only" | "vy_wz"
+    follow_speed: 0.15
+    approach_speed: 0.06
+    recovering_speed_scale: 0.5
+    line_kp_wz: 1.2
+    line_ki_wz: 0.0
+    line_kd_wz: 0.1
+    line_heading_weight: 0.5
+    line_kp_vy: 0.15
+    heading_hold_kp: 2.0
+    min_line_confidence: 0.5
+    line_state_timeout_s: 0.3
+    marker_state_timeout_s: 0.5
+    obstacle_state_timeout_s: 0.3
+    odom_timeout_s: 0.2
+    marker_trigger_y: 0.70
+    default_station_stop_offset_m: 0.10
+    marker_relock_time_s: 3.0
+    marker_relock_distance_m: 0.30
+    approach_timeout_s: 10.0
+    stopped_velocity_eps: 0.01
+    stopped_settle_s: 0.5
+    lift_action_timeout_s: 30.0
+    blocked_wait_s: 3.0
+    blocked_timeout_s: 60.0
+    detour_enabled: true
+    detour_preferred_side: "left"
+    detour_distance_m: 0.35
+    detour_speed: 0.08
+    detour_timeout_s: 8.0
+    side_blocked_timeout_s: 10.0
+    pass_speed: 0.08
+    pass_min_distance_m: 0.20
+    pass_clear_scans: 3
+    pass_clearance_distance_m: 0.50   # ≥ (lidar → đuôi xe) + margin, xem docs/04 §D.5 PASS
+    pass_max_distance_m: 1.50
+    return_speed: 0.08
+    return_tolerance_m: 0.02
+    return_timeout_s: 8.0
+    reacquire_speed: 0.05
+    reacquire_timeout_s: 5.0
+    reacquire_confirm_frames: 5
+    corner_advance_distance_m: 0.25
+    turn_speed: 0.6
+    turn_timeout_s: 6.0
+    turn_align_tolerance_rad: 0.15
+    turn_max_angle_rad: 2.1
+
+stm32_bridge:
+  ros__parameters:
+    cmd_rate_hz: 20.0
+    heartbeat_rate_hz: 5.0
+    link_timeout_s: 0.5
+    interbyte_timeout_s: 0.005
+    reconnect_interval_s: 1.0
+    odom_frame: "odom"
+    base_frame: "base_link"
+    publish_tf: true
+    publish_imu: true

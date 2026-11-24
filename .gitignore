@@ -1,0 +1,15 @@
+# video goc (rat nang) - da nen sang .mp4 de dua len GitHub
+*.avi
+# build firmware / Python tam
+Debug/
+Release/
+__pycache__/
+*.pyc
+*.o
+*.d
+*.su
+# du lieu chay may (sinh lai duoc)
+*.db
+*.db-journal
+cam.jpg
+cam_tmp.jpg

@@ -1,0 +1,73 @@
+# =============================================================================
+# BẢNG MÃ ARUCO CHO TUYẾN AGV — thay cho config/station_map.yaml (schema_version 2)
+# Dictionary: DICT_4X4_50 (ID 0–49). Mỗi ID chỉ dán ở MỘT vị trí trên tuyến.
+# Quy tắc nhớ: ID mã báo trước trạm = ID trạm + 10.
+# =============================================================================
+schema_version: 2
+dictionary: "DICT_4X4_50"
+
+# ---------------------------------------------------------------- 0–9: TRẠM (dừng)
+stations:
+  - {id: 0, name: HOME,     action: HOME,      note: "vị trí đỗ / bắt đầu"}
+  - {id: 1, name: PICKUP,   action: LIFT_UP,   note: "điểm lấy hàng"}
+  - {id: 5, name: ZONE_A,   action: LIFT_DOWN, cargo_type: 1}
+  - {id: 6, name: ZONE_B,   action: LIFT_DOWN, cargo_type: 2}
+  - {id: 7, name: ZONE_C,   action: LIFT_DOWN, cargo_type: 3}
+  - {id: 8, name: ZONE_D,   action: LIFT_DOWN, cargo_type: 4}
+  # 2–4: dự phòng thêm điểm lấy hàng; 9: dự phòng (vd trạm sạc)
+
+# ------------------------------------------- 10–19: BÁO TRƯỚC TRẠM (đặt trước trạm)
+# Thấy mã này: giảm về approach_speed, chuẩn bị dừng.
+# Xe dừng khi gặp mã trạm (id - 10), hoặc sau pre_distance_m theo odometry nếu không thấy mã trạm.
+pre_station:
+  - {id: 10, station_id: 0, pre_distance_m: 0.30}
+  - {id: 11, station_id: 1, pre_distance_m: 0.30}   # cách điểm lấy hàng 30 cm
+  - {id: 15, station_id: 5, pre_distance_m: 0.30}
+  - {id: 16, station_id: 6, pre_distance_m: 0.30}
+  - {id: 17, station_id: 7, pre_distance_m: 0.30}
+  - {id: 18, station_id: 8, pre_distance_m: 0.30}
+
+# ----------------------------------------------------------- 20–29: TỐC ĐỘ
+# Chỉ đặt FAST ở đầu đoạn thẳng dài ≥ 1 m. Xe tự về NORMAL khi: gặp mã rẽ/ngã rẽ/báo trước trạm,
+# phát hiện góc, confidence line thấp, lidar báo SLOW/STOP, hoặc đã đi quá max_distance_m.
+speed:
+  - {id: 20, name: SPEED_FAST,   speed: 0.30, max_distance_m: 3.0}
+  - {id: 21, name: SPEED_NORMAL, speed: 0.15}
+  - {id: 22, name: SPEED_SLOW,   speed: 0.08, note: "khu có người / lối hẹp"}
+
+# ----------------------------------------------- 30–39: RẼ VÀ NGÃ RẼ (đặt trước 30–40 cm)
+turns:
+  - {id: 30, name: TURN_LEFT_AHEAD,  direction: left}
+  - {id: 31, name: TURN_RIGHT_AHEAD, direction: right}
+  - {id: 32, name: U_TURN_AHEAD,     direction: uturn}    # cuối tuyến cụt
+junctions:   # ngã ba / ngã tư: hướng đi phụ thuộc trạm đích
+  - id: 35
+    name: J1
+    routes: {ZONE_A: left, ZONE_B: straight, ZONE_C: right, ZONE_D: right, HOME: straight, PICKUP: straight}
+  - id: 36
+    name: J2
+    routes: {ZONE_C: left, ZONE_D: right, default: straight}
+  # 33–34, 37–39: dự phòng thêm ngã rẽ
+
+# ---------------------------------------------------------- 40–49: LUẬT KHU VỰC
+rules:
+  - {id: 40, name: NO_DETOUR_ZONE,  note: "lối hẹp: chỉ dừng chờ, không né"}
+  - {id: 41, name: DETOUR_ALLOWED,  note: "hết lối hẹp"}
+  - {id: 42, name: STOP_AND_WAIT,   wait_s: 2.0, note: "giao cắt lối người đi: dừng, kiểm lidar, rồi đi"}
+  - {id: 43, name: END_OF_LINE,     note: "dừng hẳn, báo lỗi nếu không phải đích"}
+  - {id: 49, name: TEST_MARKER,     note: "chỉ dùng khi test camera"}
+
+# ------------------------------------------------- Ánh xạ loại hàng → khu (đổi tại đây)
+cargo_routing:
+  1: ZONE_A
+  2: ZONE_B
+  3: ZONE_C
+  4: ZONE_D
+
+# ------------------------------------------------------------ Quy tắc dán mã (tham khảo)
+placement:
+  marker_size_m: 0.05          # cạnh phần đen; in kèm viền trắng ≥ 1 cm
+  side_of_line: right          # luôn cùng một phía line
+  offset_from_line_m: 0.06     # từ mép băng keo tới mép marker
+  min_spacing_m: 0.20          # 2 mã liên tiếp cách ≥ 20 cm để không nhận cùng lúc
+  finish: "giấy mờ hoặc cán mờ (sàn bóng gây lóa)"

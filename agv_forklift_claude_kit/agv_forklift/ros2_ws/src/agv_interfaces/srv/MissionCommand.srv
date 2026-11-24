@@ -1,0 +1,24 @@
+# Server: mission_controller (/mission/command). Clients: dashboard backend, CLI.
+# Acceptance matrix per state: docs/04_state_machines.md.
+uint8 CMD_START=0
+uint8 CMD_PAUSE=1
+uint8 CMD_RESUME=2
+uint8 CMD_CANCEL=3
+uint8 CMD_GO_HOME=4
+uint8 CMD_LIFT_UP=5
+uint8 CMD_LIFT_DOWN=6
+uint8 CMD_LIFT_HOME=7
+uint8 CMD_RESET_ERROR=8
+uint8 MISSION_TRANSPORT=1
+uint8 MISSION_PATROL=2
+
+uint8 command
+uint8 mission_type           # CMD_START only
+string pickup_station        # CMD_START + MISSION_TRANSPORT
+string dropoff_station       # CMD_START + MISSION_TRANSPORT
+bool return_home             # CMD_START + MISSION_TRANSPORT
+string requested_by          # user id or "cli" (audit log)
+---
+bool accepted
+string message
+string mission_id

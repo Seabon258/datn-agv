@@ -1,0 +1,21 @@
+# Bảng trạm ArUco (dictionary DICT_4X4_50).
+# aruco_detector, mission_controller và dashboard đều đọc từ file này — KHÔNG hard-code ở nơi khác.
+# default_action: NONE | CHECKPOINT | HOME | LIFT_UP | LIFT_DOWN
+#   - Mission TRANSPORT: hành động do bước nhiệm vụ quyết định; default_action chỉ dùng cho PATROL.
+#   - Mission PATROL: thực hiện default_action của mọi marker gặp trên đường.
+# stop_offset_m: quãng đường đi thêm (theo odometry) sau khi marker vượt marker_trigger_y.
+#   null = dùng mission_controller.default_station_stop_offset_m.
+schema_version: 1
+stations:
+  - id: 0
+    name: "HOME"
+    default_action: "HOME"
+    stop_offset_m: null
+  - id: 1
+    name: "PICKUP_A"
+    default_action: "LIFT_UP"
+    stop_offset_m: null
+  - id: 2
+    name: "DROPOFF_B"
+    default_action: "LIFT_DOWN"
+    stop_offset_m: null

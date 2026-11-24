@@ -1,0 +1,9 @@
+# Server: stm32_bridge (/stm32/set_pid). For tuning only. Not persisted on the STM32.
+uint8 WHEEL_ALL=255
+uint8 wheel                  # 0 FL, 1 FR, 2 RL, 3 RR, 255 all
+float32 kp
+float32 ki
+float32 kd
+---
+bool success
+string message

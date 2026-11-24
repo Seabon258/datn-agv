@@ -1,0 +1,186 @@
+{
+  "protocol_version": 1,
+  "crc_check": {
+    "algorithm": "CRC-16/CCITT-FALSE",
+    "input_ascii": "123456789",
+    "crc": "0x29B1"
+  },
+  "frames": {
+    "CMD_VELOCITY_FWD": {
+      "message": "CMD_VELOCITY",
+      "msg_id": 1,
+      "seq": 0,
+      "fields": {
+        "vx": 0.25,
+        "vy": 0.0,
+        "wz": 0.5
+      },
+      "hex": "aa 55 01 01 00 0c 00 00 80 3e 00 00 00 00 00 00 00 3f d8 c6"
+    },
+    "CMD_LIFT_UP": {
+      "message": "CMD_LIFT",
+      "msg_id": 2,
+      "seq": 1,
+      "fields": {
+        "action": 2,
+        "request_id": 7
+      },
+      "hex": "aa 55 01 02 01 03 02 07 00 95 04"
+    },
+    "CMD_ARM": {
+      "message": "CMD_ARM",
+      "msg_id": 5,
+      "seq": 2,
+      "fields": {
+        "magic": 558715457
+      },
+      "hex": "aa 55 01 05 02 04 41 52 4d 21 59 6a"
+    },
+    "CMD_STOP_OPERATOR": {
+      "message": "CMD_STOP",
+      "msg_id": 3,
+      "seq": 3,
+      "fields": {
+        "reason": 2,
+        "disarm": 0
+      },
+      "hex": "aa 55 01 03 03 02 02 00 bc 36"
+    },
+    "HEARTBEAT_PI": {
+      "message": "HEARTBEAT",
+      "msg_id": 4,
+      "seq": 4,
+      "fields": {
+        "uptime_ms": 60000
+      },
+      "hex": "aa 55 01 04 04 04 60 ea 00 00 ae 06"
+    },
+    "CMD_SET_PID_ALL": {
+      "message": "CMD_SET_PID",
+      "msg_id": 6,
+      "seq": 5,
+      "fields": {
+        "wheel": 255,
+        "kp": 1.5,
+        "ki": 0.25,
+        "kd": 0.0
+      },
+      "hex": "aa 55 01 06 05 0d ff 00 00 c0 3f 00 00 80 3e 00 00 00 00 b4 b7"
+    },
+    "TELEMETRY_ODOM": {
+      "message": "TELEMETRY_ODOM",
+      "msg_id": 129,
+      "seq": 10,
+      "fields": {
+        "t_ms": 1000,
+        "x": 1.0,
+        "y": -0.5,
+        "theta": 0.25,
+        "vx": 0.125,
+        "vy": 0.0,
+        "wz": -0.5
+      },
+      "hex": "aa 55 01 81 0a 1c e8 03 00 00 00 00 80 3f 00 00 00 bf 00 00 80 3e 00 00 00 3e 00 00 00 00 00 00 00 bf e2 5f"
+    },
+    "TELEMETRY_MOTOR": {
+      "message": "TELEMETRY_MOTOR",
+      "msg_id": 130,
+      "seq": 11,
+      "fields": {
+        "rpm_target_fl": 60.0,
+        "rpm_target_fr": 60.0,
+        "rpm_target_rl": 60.0,
+        "rpm_target_rr": 60.0,
+        "rpm_actual_fl": 59.5,
+        "rpm_actual_fr": 60.25,
+        "rpm_actual_rl": 58.75,
+        "rpm_actual_rr": 61.0,
+        "pwm_fl": 420,
+        "pwm_fr": -415,
+        "pwm_rl": 430,
+        "pwm_rr": -410,
+        "encoder_fault_mask": 0
+      },
+      "hex": "aa 55 01 82 0b 29 00 00 70 42 00 00 70 42 00 00 70 42 00 00 70 42 00 00 6e 42 00 00 71 42 00 00 6b 42 00 00 74 42 a4 01 61 fe ae 01 66 fe 00 87 1d"
+    },
+    "TELEMETRY_LIFT_DONE": {
+      "message": "TELEMETRY_LIFT",
+      "msg_id": 131,
+      "seq": 12,
+      "fields": {
+        "state": 4,
+        "flags": 17,
+        "last_action": 2,
+        "reserved": 0,
+        "request_id": 7,
+        "position_steps": 16000,
+        "error_code": 0
+      },
+      "hex": "aa 55 01 83 0c 0c 04 11 02 00 07 00 80 3e 00 00 00 00 74 e3"
+    },
+    "TELEMETRY_ERROR_WATCHDOG": {
+      "message": "TELEMETRY_ERROR",
+      "msg_id": 132,
+      "seq": 13,
+      "fields": {
+        "error_code": 257,
+        "severity": 3,
+        "component": 5,
+        "t_ms": 123456
+      },
+      "hex": "aa 55 01 84 0d 08 01 01 03 05 40 e2 01 00 5c 7f"
+    },
+    "TELEMETRY_STATUS_FAULT": {
+      "message": "TELEMETRY_STATUS",
+      "msg_id": 133,
+      "seq": 14,
+      "fields": {
+        "t_ms": 123456,
+        "fault_flags": 3,
+        "mode": 2,
+        "estop": 1,
+        "vbat_mv": 12340,
+        "rx_crc_errors": 5,
+        "rx_frames_dropped": 1
+      },
+      "hex": "aa 55 01 85 0e 10 40 e2 01 00 03 00 00 00 02 01 34 30 05 00 01 00 38 e9"
+    },
+    "TELEMETRY_IMU": {
+      "message": "TELEMETRY_IMU",
+      "msg_id": 134,
+      "seq": 15,
+      "fields": {
+        "ax": 0.0,
+        "ay": 0.0,
+        "az": 9.75,
+        "gx": 0.0,
+        "gy": 0.0,
+        "gz": 0.5
+      },
+      "hex": "aa 55 01 86 0f 18 00 00 00 00 00 00 00 00 00 00 1c 41 00 00 00 00 00 00 00 00 00 00 00 3f ec bd"
+    },
+    "ACK_LIFT_OK": {
+      "message": "ACK",
+      "msg_id": 143,
+      "seq": 16,
+      "fields": {
+        "acked_msg_id": 2,
+        "acked_seq": 1,
+        "result": 0,
+        "reason": 0
+      },
+      "hex": "aa 55 01 8f 10 04 02 01 00 00 27 1e"
+    }
+  },
+  "stream": {
+    "hex": "00 13 aa aa 55 01 01 00 0c 00 00 7f 3e 00 00 00 00 00 00 00 3f d8 c6 aa 55 aa 55 01 02 01 03 02 07 00 95 04 55 aa aa 55 01 05 02 04 41 52 4d 21 59 6a",
+    "expected_messages": [
+      "CMD_LIFT",
+      "CMD_ARM"
+    ],
+    "expected_stats": {
+      "crc_errors": 1,
+      "version_errors": 1
+    }
+  }
+}
