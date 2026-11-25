@@ -33,6 +33,10 @@ def scenario(name):
         return [(-200, 0), (3000, 0)], [], walls
     if name == 'trip62':                    # chai, line re trai ngay sau, THUNG nam tren duong doan thang
         return [(-200, 0), (1900, 0), (1900, 1300)], [(1100, 0, 40), (2450, 0, 160)], walls
+    if name == 'vturn':                      # GOC NHON (chu Λ): line gap nguoc lai ~145 do
+        return [(-200, 0), (1300, 0), (300, 700)], [], walls
+    if name == 'corner_wall':                # goc re trai, TUONG chi cach tam goc 45 cm phia truoc (giong phong that)
+        return [(-200, 0), (1400, 0), (1400, 1300)], [], [(1850, -1500, 1850, 2000), (-800, -1500, 6000, -1500), (-800, 2000, 6000, 2000)]
     if name == 'corner':
         return [(-200, 0), (1400, 0), (1400, 1300)], [], walls
     if name == 'corner_bottle':

@@ -265,6 +265,8 @@ def main():
         pr = ref.project(*odo.pose[:2]) if (ref is not None and len(ref.nodes) >= 2) else None
         return None if pr is None else pr[1]
     mem_ref = None                                 # ban dong bang cua bo nho khi bam bo nho (MEMORY)
+    path_mute_until = 0.0                          # tam tat phat hien vat TREN DUONG (xa) toi thoi diem nay
+    look_dir, look_h0, look_hp, look_turned, look_dir_n = 1, 0.0, 0.0, 0.0, 0   # xoay nhin quanh khi thay cuoi line (goc nhon?)
     end_resume = 0
 
     def path_blocked(vx_, vy_, wz_, extra_pts=()):
@@ -434,8 +436,8 @@ def main():
                 near_corner = r['corner'] or now - corner_seen_t < fc.get('corner_memory_s', 1.5) + 0.5
                 if not near_corner and mem is not None and len(mem.nodes) > 5 and mode in ('FOLLOW', 'MEMORY'):
                     s_here = mem_s()
-                    if s_here is not None and mem.turn_between(s_here, s_here + GEOM['front'] + mcfg.get('detour_trigger_mm', 700)) \
-                            > mcfg.get('detour_max_turn_deg', 35):
+                    if s_here is not None and mem.sharpest_turn(s_here, min(mem.length(), s_here + GEOM['front'] + mcfg.get('detour_trigger_mm', 700)),
+                                                              mcfg.get('sharp_window_mm', 250)) > mcfg.get('detour_max_turn_deg', 35):
                         near_corner = True                    # bo nho biet line RE phia truoc: logic goc re xu ly, khong "ne" do vat sau goc
                 if near_corner and mode in ('FOLLOW', 'MEMORY'):
                     ob_path_n = 0                                 # sap re: duong khong di thang -> bo phat hien xa (vung dung 30 cm + kiem tra xoay van chay)
@@ -453,13 +455,16 @@ def main():
                                              GEOM['half_w'] + mcfg.get('path_band_mm', 60)) if (pr and near_pts) else None
                     ob_path_n = ob_path_n + 1 if cl else 0
                     ob_on_path = bool(cl)
-                if mem is not None and mode in ('FOLLOW', 'MEMORY') and ob_path_n >= oc.get('persist_scans', 2):
+                if mem is not None and mode in ('FOLLOW', 'MEMORY') and ob_path_n >= oc.get('persist_scans', 2) and now >= path_mute_until:
                     force_block = True
                     ob_path_n = 0
-                if (mode == 'CREEP' and now - t_mode > 0.2 and ob['zone'] == 'STOP' and not stale and rem_mm is not None
-                        and rem_mm <= fc.get('corner_stop_tol_mm', 120)):
-                    # gan toi tam goc (con <= 12 cm) ma phia TRUOC co tuong/do vat: KHONG can di thang nua -> xoay luon
-                    # (xoay co kiem tra cho trong rieng: ban kinh than xe quanh tam)
+                corner_rem = rem_mm if mode == 'CREEP' else (
+                    (target_cnt - enc_mean()) * mm_per_count if (mode == 'APPROACH' and gcal and link and target_cnt is not None) else None)
+                if (mode in ('CREEP', 'APPROACH') and now - t_mode > 0.2 and ob['zone'] == 'STOP' and not stale and corner_rem is not None
+                        and corner_rem <= fc.get('corner_stop_tol_mm', 350)):
+                    rem_mm = corner_rem
+                    # dang toi goc (con <= corner_stop_tol_mm) ma phia TRUOC co tuong/do vat: KHONG di thang nua -> xoay luon;
+                    # xe mecanum: xoay xong buoc CAN NGANG (ALIGN) tu truot ve tam line moi. Xoay co kiem tra cho trong rieng
                     db.event('info', 'toi gan tam goc (con %.0f mm), phia truoc co vat cach %.0f mm -> xoay %s luon' % (
                         rem_mm, ob['front_mm'] or -1, 'TRAI' if (votes or turn_dir) > 0 else 'PHAI'), trip)
                     mode, t_mode, confirm = 'TURN', now, 0
@@ -643,6 +648,15 @@ def main():
                         h_start = h_prev = None
                         turned, turn_hint = 0.0, 0
                         db.event('marker', 'cuoi tuyen cut: quay dau', trip)
+                    elif fc.get('end_look', True) and not (nav and nav.done) and link:
+                        # "cuoi line" co the la GOC NHON (chu V / Λ, nhanh moi gap nguoc ra khoi khung anh) hoac doan gay:
+                        # xoay tai cho nhin quanh ve phia line vua mat (co kiem tra cho trong khi xoay) truoc khi ket luan
+                        mode, t_mode, confirm = 'LOOK', now, 0
+                        look_dir = 1 if trend <= 0 else -1
+                        look_h0 = look_hp = link.telem['heading_deg']
+                        look_turned, look_dir_n = 0.0, 0
+                        db.event('info', 'thay cuoi line -> xoay %s nhin quanh (toi da %d do moi ben) xem line co re gap khong' % (
+                            'TRAI' if look_dir > 0 else 'PHAI', fc.get('end_look_deg', 150)), trip)
                     else:
                         state, result = 'ARRIVED', 'ok'
                         if nav and not nav.done:
@@ -652,6 +666,40 @@ def main():
                             db.event('arrived', 'toi cuoi line (chay them %.0f mm)' % done_mm, trip)
                         break
                 vx = fc.get('approach_speed', 500)
+
+            if mode == 'LOOK' and not rot_hold:
+                hcur = link.telem['heading_deg']
+                look_turned += abs((hcur - look_hp + 180.0) % 360.0 - 180.0)
+                look_hp = hcur
+                ok_line = r['found'] and abs(r['error']) <= fc.get('search_accept', 0.3) and look_turned > 15
+                if ok_line and mem is not None and r.get('g_pts') and len(mem.nodes) > 5:
+                    # bo DOAN LINE VUA DI (xoay ~180 do se thay lai no): diem line nam tren bo nho cu -> khong nhan
+                    pf = odo.pose_at(t_frame)
+                    pc = mem.project_many([MN.to_odom(pf, x, y) for x, y in r['g_pts']])
+                    s_here = mem_s() or mem.length()
+                    on_old = sum(1 for s_, c_ in pc if abs(c_) < 60 and s_ < s_here - 100)   # chi doan xe DA DI QUA (sau lung)
+                    if on_old >= 0.6 * len(pc):
+                        ok_line = False
+                confirm = confirm + 1 if ok_line else 0
+                if confirm >= fc.get('search_confirm', 3):
+                    mode, d_f, last_err, i_err = 'FOLLOW', 0.0, r['error'], 0.0
+                    end_seen_t = 0.0
+                    if r['g_offset_mm'] is not None and abs(r['g_offset_mm']) > fc.get('align_ok_mm', 15):
+                        mode, t_mode = 'ALIGN', now
+                    db.event('info', 'xoay %.0f do thay line re gap (goc nhon / khuc cua) -> bam tiep' % look_turned, trip)
+                elif look_turned >= fc.get('end_look_deg', 150) and look_dir_n == 0:
+                    look_dir, look_dir_n = -look_dir, 1        # ben nay khong co: xoay NGUOC qua vi tri ban dau sang ben kia
+                    db.event('info', 'ben nay khong thay -> xoay sang %s' % ('TRAI' if look_dir > 0 else 'PHAI'), trip)
+                elif look_turned >= 3 * fc.get('end_look_deg', 150) or now - t_mode > fc.get('end_look_s', 30):
+                    state, result = 'ARRIVED', 'ok'
+                    if nav and not nav.done:
+                        state, result = 'END_NOT_TARGET', 'failed'
+                        db.event('error', 'het line (da xoay %.0f do nhin quanh) nhung chua toi dich %s' % (look_turned, nav.target), trip)
+                    else:
+                        db.event('arrived', 'toi cuoi line (xoay %.0f do nhin quanh khong thay line re tiep)' % look_turned, trip)
+                    break
+                else:
+                    wz = fc.get('end_look_wz', 1500) * look_dir
 
             if mode == 'CREEP':
                 # chay thang (STM32 giu huong bang gyro) toi khi tam xe nam tren nga cua
@@ -908,6 +956,13 @@ def main():
                             db.event('obstacle', 'QUY DAO NE ve %s (%s): lech %.0f mm, vat rong %.0f mm sau %.0f mm, ra %.0f mm -> song song -> ve %.0f mm%s' % (
                                 '10 gio 30' if sd > 0 else '1 gio 30', 'TRAI' if sd > 0 else 'PHAI', abs(pl.D), cmax_ - cmin_, s1_ - s0_,
                                 pl.L_out, pl.L_back, '' if pl.end_s() <= pl.s_end_known else ' (duong sau vat: NGOAI SUY THANG)'), trip)
+                        elif why.startswith('khong thay vat tren duong') and ob['zone'] != 'STOP' and \
+                                (ob['front_mm'] is None or ob['front_mm'] > oc.get('stop_mm', 300) + mcfg.get('resume_clear_mm', 100)):
+                            # bo phat hien xa va bo lap quy dao danh gia khac nhau: bo lap quy dao (chi tiet hon) noi KHONG co vat
+                            # tren duong va 30 cm truoc mui trong -> chay tiep, tam tat phat hien xa de khong chan lai ngay
+                            mode = ob_prev_mode if ob_prev_mode in ('FOLLOW', 'MEMORY', 'APPROACH', 'ALIGN') else 'FOLLOW'
+                            path_mute_until = now + mcfg.get('path_mute_s', 2.0)
+                            db.event('obstacle', 'kiem tra lai: khong co vat tren duong di -> chay tiep', trip)
                         elif why != plan_why:
                             plan_why = why
                             db.event('obstacle', 'khong ne: %s -> dung cho' % why, trip)
@@ -1122,7 +1177,7 @@ def main():
                 else:
                     vx = oc.get('reacquire_speed', 400)
 
-            if mode in ('SEARCH', 'TURN') and om and ob.get('points') is not None:
+            if mode in ('SEARCH', 'TURN', 'LOOK') and om and ob.get('points') is not None:
                 import math
                 r_rot = math.hypot(cfg['geometry'].get('car_length_mm', 450) / 2, cfg['geometry'].get('car_width_mm', 340) / 2) \
                     + oc.get('rotation_margin_mm', 60)
@@ -1186,7 +1241,15 @@ def main():
                 v_d = (2.0 * fc.get('creep_decel', 2000) * max(0.0, rem_mm) / mm_per_count) ** 0.5
                 vx = max(fc.get('creep_min_speed', 300), min(vpt if mode != 'ST_CREEP' else sc.get('approach_speed', 1000), v_d))
             if (om or co) and ob['zone'] == 'SLOW' and mode in ('FOLLOW', 'APPROACH', 'STATION', 'ALIGN'):
-                vx = min(vx, oc.get('slow_speed', 800))
+                # giam toc THEO KHOANG CACH (truoc day: co vat trong 80 cm la ha thang 800 -> trong phong luc nao cung cham)
+                fm = ob['front_mm']
+                if fm is None:
+                    slow_cap = oc.get('slow_speed', 800)
+                else:
+                    u = (fm - oc.get('stop_mm', 300)) / max(1.0, oc.get('slow_mm', 800) - oc.get('stop_mm', 300))
+                    u = max(0.0, min(1.0, u))
+                    slow_cap = oc.get('slow_speed', 800) + (vmax - oc.get('slow_speed', 800)) * u ** oc.get('slow_curve', 1.5)
+                vx = min(vx, slow_cap)
                 if mode == 'FOLLOW' and r['near_error'] is not None:
                     wz = -fc['kp'] * r['near_error']          # bo phan line o xa (co the la vat can mau xanh)
             if mode == 'ST_ACTION':
@@ -1195,7 +1258,7 @@ def main():
                 vx = vmax
             if mode in ('DETOUR', 'RETURN', 'MEMORY', 'DEXEC', 'REJOIN'):
                 v_cmd = vx                                  # ne / ve tuyen CHEO: giu thanh phan tien da tinh (truoc day bi ep = 0 -> chi chay 9 gio)
-            elif mode in ('START', 'TURN', 'SEARCH', 'ST_ACTION', 'WAIT', 'BLOCKED'):
+            elif mode in ('START', 'TURN', 'SEARCH', 'ST_ACTION', 'WAIT', 'BLOCKED', 'LOOK'):
                 v_cmd = 0.0                                 # dung tai cho (xoay / cho / nang ha)
             else:
                 v_cmd = ramp(v_cmd, vx, fc.get('accel_up', 2500), fc.get('accel_down', 2500))
@@ -1206,7 +1269,7 @@ def main():
             else:
                 w_cmd = 0.0
             wz = max(-fc['max_wz'], min(fc['max_wz'], wz))
-            state = {'MEMORY': 'BAM_BO_NHO', 'DEXEC': 'NE_THEO_QD', 'REJOIN': 'NHAP_LAI_LINE', 'CURVE': 'NE_CONG', 'BLOCKED': 'VAT_CAN', 'DETOUR': 'NE_NGANG', 'PASS': 'VUOT_QUA', 'RETURN': 'VE_TUYEN',
+            state = {'LOOK': 'NHIN_QUANH', 'MEMORY': 'BAM_BO_NHO', 'DEXEC': 'NE_THEO_QD', 'REJOIN': 'NHAP_LAI_LINE', 'CURVE': 'NE_CONG', 'BLOCKED': 'VAT_CAN', 'DETOUR': 'NE_NGANG', 'PASS': 'VUOT_QUA', 'RETURN': 'VE_TUYEN',
                      'REACQUIRE': 'TIM_LAI_LINE', 'WAIT': 'DUNG_CHO', 'STATION': 'TOI_TRAM', 'ST_CREEP': 'VAO_TRAM', 'ST_ACTION': 'NANG_HA',
                      'START': 'START', 'ALIGN': 'CAN_NGANG', 'END': 'CUOI_LINE', 'CREEP': 'CHAY_THEM', 'FOLLOW': 'FOLLOW_LINE', 'APPROACH': 'TOI_NGA_CUA', 'TURN': 'XOAY_NGA_CUA', 'SEARCH': 'SEARCH'}[mode]
             if vw is not None:

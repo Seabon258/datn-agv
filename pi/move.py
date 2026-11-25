@@ -11,7 +11,7 @@ kind = sys.argv[1]
 amount = float(sys.argv[2])
 speed = int(sys.argv[3]) if len(sys.argv) > 3 and kind != 'huong' else 1200
 vec = {'tien': (1, 0), 'lui': (-1, 0), 'trai': (0, 1), 'phai': (0, -1)}
-d = D.Demo('/dev/ttyUSB0', speed)
+d = D.Demo('/dev/serial/by-id/usb-1a86_USB_Serial-if00-port0', speed)   # ten co dinh STM32 (ttyUSBx doi theo thu tu cam)
 try:
     if kind == 'xoay':
         d.rotate('xoay %+.0f' % amount, amount)

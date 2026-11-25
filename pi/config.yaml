@@ -74,7 +74,8 @@ obstacle:                          # LiDAR vat can (kit Module 5). Do 2026-11-23
   return_tol_mm: 20
   reacquire_speed: 400
   reacquire_s: 5.0                 # kit 10.8
-  slow_speed: 800                  # vung SLOW (30-80 cm)
+  slow_speed: 800                  # toc do khi vat cach mui 30 cm (vung SLOW giam DAN tu toc do bam line o 80 cm -> 800 o 30 cm)
+  slow_curve: 1.5                  # >1: giu nhanh lau hon roi giam manh khi gan
 
 cam_obstacle:                      # camera phat hien vat can (bu cho LiDAR: vat den/bong/thap). Can ground_calib.json
   enabled: true
@@ -173,6 +174,8 @@ follow:
   corner_near_y: 0.60              # ... va truoc do nga cua phai xuong toi it nhat 60% anh (khong thi la bao nham)
   # --- khi DA hieu chinh mat san (ground_calib.json): dung goc/lech THAT ---
   turn_accept_deg: 10              # co hieu chinh: xoay toi khi line moi song song (goc that < 10 do)
+  end_look: true                   # thay cuoi line -> xoay nhin quanh tim nhanh re GAP (goc nhon chu V) truoc khi ket luan het line
+  end_look_deg: 150                # xoay toi da (qua ~160 do se thay lai doan line vua di)
   align_max_mm: 450                # line moi lech ngang toi 45 cm van nhan (doan ngan / goc phuc tap), roi truot ngang ve
   align_timeout_s: 8               # truot ngang toi da 8 s (45 cm o ~6-9 cm/s)
   align_ok_mm: 15                  # lech < 1.5 cm -> can xong
@@ -250,7 +253,7 @@ memory:                            # BO NHO DUONG DI + ne theo quy dao (docs/fea
   memory_gap_max_mm: 250           # diem moi cach cuoi bo nho > 25 cm -> bo (nhieu / line khac)
   memory_min_ahead_mm: 350         # mat line ma bo nho con >= 35 cm phia truoc -> bam bo nho (line gay/che)
   memory_follow_max_mm: 600        # bam bo nho toi da 60 cm, khong thay line -> xoay tim (cu)
-  memory_follow_speed: 60
+  memory_follow_speed: 100        # mm/s (truoc 60)
   memory_timeout_s: 15
   pursuit_lookahead_mm: 150
   heading_k: 1.5                   # giu huong than theo tiep tuyen duong (rad/s moi rad lech)
@@ -267,7 +270,7 @@ memory:                            # BO NHO DUONG DI + ne theo quy dao (docs/fea
   detour_curve_length_mm: 500      # doan ra / ve (smoothstep bac 5)
   detour_curve_fracs: [1.0, 0.75, 0.5, 0.3]   # loi hep (ke 2 ben): thu doan ra/ve 50 -> 37 -> 25 -> 15 cm (doc dan)
   detour_max_mm: 700               # lech toi da
-  detour_speed: 80
+  detour_speed: 130                # mm/s (truoc 80)
   detour_timeout_s: 60
   detour_when_loaded: false        # dang mang hang -> khong ne (cho)
   extrapolate_min_straight_mm: 150 # bo nho chua thay duong sau vat: chi ngoai suy neu 15 cm cuoi THANG (camera that chi thay ~22 cm line luc dung yen)
@@ -278,4 +281,4 @@ memory:                            # BO NHO DUONG DI + ne theo quy dao (docs/fea
   rejoin_confirm_frames: 5         # nhap lai: camera thay line that 5 khung lien tiep
   rejoin_max_offset_mm: 120
   rejoin_search_distance_mm: 400   # het quy dao di them 40 cm khong thay line -> dung bao loi
-  rejoin_speed: 50
+  rejoin_speed: 80                 # mm/s (truoc 50)

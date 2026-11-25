@@ -403,6 +403,24 @@ class LineMemory:
             s += step
         return math.degrees(worst)
 
+    def sharpest_turn(self, s_a, s_b, window=250.0, step=25.0):
+        """Goc doi huong LON NHAT (do) trong cua so `window` mm bat ky nam trong [s_a, s_b] (ke ca ngoai suy):
+        GOC GAT (vuong / nhon) -> lon; duong CONG THOAI dai -> nho."""
+        if len(self.nodes) < 3 or s_b <= s_a:
+            return 0.0
+        hs, s = [], s_a
+        while s <= s_b:
+            _, _, tx, ty = self.point_at(s)
+            hs.append((s, math.atan2(ty, tx)))
+            s += step
+        worst = 0.0
+        for i in range(len(hs)):
+            for j in range(i + 1, len(hs)):
+                if hs[j][0] - hs[i][0] > window:
+                    break
+                worst = max(worst, abs(wrap(hs[j][1] - hs[i][1])))
+        return math.degrees(worst)
+
     # ---------- luu / nap tuyen (P5) ----------
     def save(self, path, meta=None):
         json.dump({'nodes': [[round(v, 1) for v in n[:2]] for n in self.nodes], 'meta': meta or {}}, open(path, 'w'))
@@ -417,15 +435,16 @@ class LineMemory:
 class DetourPlan:
     """Duong tham chieu (bo nho / ngoai suy) + do lech ngang offset(s) dang smoothstep bac 5: ra -> song song -> ve."""
 
-    def __init__(self, mem, s_a, L_out, s_b, L_back, D, s_end_known):
+    def __init__(self, mem, s_a, L_out, s_b, L_back, D, s_end_known, c0=0.0):
         self.mem, self.s_a, self.L_out, self.s_b, self.L_back, self.D = mem, s_a, L_out, s_b, L_back, D
         self.s_end_known = s_end_known
+        self.c0 = c0                                         # do lech LUC BAT DAU (xe co the da lech san, vd lap lai quy dao giua chung)
 
     def offset(self, s):
         if s < self.s_a:
-            return 0.0
+            return self.c0
         if s < self.s_a + self.L_out:
-            return self.D * smoothstep5((s - self.s_a) / self.L_out)
+            return self.c0 + (self.D - self.c0) * smoothstep5((s - self.s_a) / self.L_out)
         if s < self.s_b:
             return self.D
         return self.D * (1.0 - smoothstep5((s - self.s_b) / self.L_back))
@@ -493,7 +512,9 @@ def _try_plan(mem, pose, pts_odom, geo, cfg, s_car, s0, s1, D, L, lon, known):
     s_a = max(s_car, s_out_end - L)
     L_out = max(1.0, s_out_end - s_a)                    # vat gan: doan ra ngan -> doc hon (toi muc truot ngang tai cho)
     s_b = s1 + geo['rear'] + lon                         # duoi xe qua mat sau vat (+ le) moi ve
-    plan = DetourPlan(mem, s_a, L_out, s_b, L, D, known)
+    c0 = mem.cross_track(pose) or 0.0
+    c0 = c0 if c0 * D > 0 and abs(c0) <= abs(D) else 0.0     # chi giu do lech san neu cung phia va chua vuot qua D
+    plan = DetourPlan(mem, s_a, L_out, s_b, L, D, known, c0)
     # kiem tra ca vung than xe quet qua (tu vi tri hien tai -> het quy dao) voi diem LiDAR
     clear = cfg.get('sweep_margin_mm', 40)
     hit = None
@@ -503,6 +524,10 @@ def _try_plan(mem, pose, pts_odom, geo, cfg, s_car, s0, s1, D, L, lon, known):
     # line THAT camera thay + an toan luc chay; duong ngoai suy tu bo nho ngan co the lech vai do)
     s_near0, s_near1 = s0 - geo['front'] - lon, s1 + geo['rear'] + lon
     seq = [tuple(pose) + (s_car,)]
+    # xe da NGANG vat ma con thieu do lech: TRUOT NGANG TAI CHO toi offset dau quy dao roi moi tien
+    X0, Y0, tx0, ty0 = plan.point(s_car)
+    if math.hypot(X0 - pose[0], Y0 - pose[1]) > 15:
+        seq.append((X0, Y0, pose[2], s_car))
     s = s_car + 20
     while s <= plan.end_s():
         X, Y, tx, ty = plan.point(s)
@@ -553,17 +578,10 @@ def plan_detour(mem, pose, pts_odom, geo, cfg, prefer=1):
             return None, 0, 'doan line truoc vat KHONG thang (gan goc re) -> khong doan duong sau vat, dung cho'
     # duong tham chieu trong doan ne phai GAN THANG / cong nhe: quy dao lech song song khong di vong duoc goc vuong
     s_lo, s_hi = max(s_car + cfg.get('turn_check_skip_mm', 120), s0 - geo['front'] - lon - L), s1 + geo['rear'] + lon + L   # bo goc VUA xoay xong duoi xe
-    h0 = None
-    turn = 0.0
-    s = s_lo
-    while s <= s_hi:
-        _, _, tx, ty = mem.point_at(s)
-        h = math.atan2(ty, tx)
-        h0 = h if h0 is None else h0
-        turn = max(turn, abs(wrap(h - h0)))
-        s += 40.0
-    if math.degrees(turn) > cfg.get('detour_max_turn_deg', 35):
-        return None, 0, 'vat gan GOC RE (duong doi huong %.0f do trong doan ne) -> khong ne, dung cho' % math.degrees(turn)
+    # chi tu choi GOC GAT (doi huong nhieu trong doan ngan); duong CONG THOAI van ne theo duong cong duoc
+    sharp = mem.sharpest_turn(s_lo, s_hi, cfg.get('sharp_window_mm', 250))
+    if sharp > cfg.get('detour_max_turn_deg', 35):
+        return None, 0, 'vat gan GOC RE GAT (doi huong %.0f do trong %d mm) -> khong ne, dung cho' % (sharp, cfg.get('sharp_window_mm', 250))
     # thu 2 ben
     cands = []
     hits = {}
@@ -572,12 +590,26 @@ def plan_detour(mem, pose, pts_odom, geo, cfg, prefer=1):
         if abs(D) > cfg.get('detour_max_mm', 700):
             continue
         ok_plan = None
-        for frac in cfg.get('detour_curve_fracs', [1.0, 0.75, 0.5, 0.3]):
-            Lt = max(L_min, L * frac)
-            plan, hit = _try_plan(mem, pose, pts_odom, geo, cfg, s_car, s0, s1, D, Lt, lon, known)
-            if hit is None:
-                ok_plan = plan
+        for widen in range(cfg.get('detour_widen_tries', 3) + 1):
+            for frac in cfg.get('detour_curve_fracs', [1.0, 0.75, 0.5, 0.3]):
+                Lt = max(L_min, L * frac)
+                plan, hit = _try_plan(mem, pose, pts_odom, geo, cfg, s_car, s0, s1, D, Lt, lon, known)
+                if hit is None:
+                    ok_plan = plan
+                    break
+            if ok_plan is not None or hit is None:
                 break
+            # quy dao cham vat (phan vat khong duoc gom vao cum, vd vat hinh L / 2 vat sat nhau): NOI RONG do lech
+            # vua du vuot qua cac diem dang cham, roi thu lai (khong qua detour_max_mm)
+            mg = cfg.get('sweep_margin_mm', 20)
+            inside = [p for p in pts_odom if (lambda q: -geo['rear'] - mg <= q[0] <= geo['front'] + mg and abs(q[1]) <= geo['half_w'] + mg)(to_car(hit, *p))]
+            cs = [c for _, c in mem.project_many(inside)]
+            if not cs:
+                break
+            D_new = (max(cs) + geo['half_w'] + margin) if side > 0 else -(-min(cs) + geo['half_w'] + margin)
+            if abs(D_new) <= abs(D) + 5 or abs(D_new) > cfg.get('detour_max_mm', 700):
+                break
+            D = D_new
         if ok_plan is not None:
             cands.append((abs(D), side, ok_plan))
         else:
